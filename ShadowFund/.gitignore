@@ -1,0 +1,10 @@
+test-ledger/
+node_modules/
+.next/
+out/
+build/
+target/
+.DS_Store
+.env
+.env.local
+.anchor/

@@ -1,26 +1,97 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Premium Dark Theme Palette (Proton/Linear Style) */
+  --color-charcoal-900: #0B0C0E;
+  /* Main Background */
+  --color-charcoal-800: #141518;
+  /* Cards / Secondary */
+  --color-charcoal-700: #1C1E23;
+  /* Borders / Hover */
+
+  --color-teal-500: #2DD4BF;
+  /* Primary Accent (Muted Teal) */
+  --color-teal-400: #5EEAD4;
+  /* Hover Accent */
+  --color-teal-900: #134E4A;
+  /* Subtle Backgrounds */
+
+  --color-text-primary: #EDEDED;
+  --color-text-secondary: #A1A1AA;
+  --color-text-tertiary: #52525B;
+
+  --background: var(--color-charcoal-900);
+  --foreground: var(--color-text-primary);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Custom Utilities */
+  --color-charcoal-900: var(--color-charcoal-900);
+  --color-charcoal-800: var(--color-charcoal-800);
+  --color-charcoal-700: var(--color-charcoal-700);
+  --color-teal-500: var(--color-teal-500);
+  --color-teal-400: var(--color-teal-400);
+  --color-teal-900: var(--color-teal-900);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: rgba(20, 21, 24, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-header {
+  background: rgba(11, 12, 14, 0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Custom Gradients */
+.gradient-text {
+  background: linear-gradient(135deg, #EDEDED 0%, #A1A1AA 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-teal {
+  background: linear-gradient(135deg, #2DD4BF 0%, #0F766E 100%);
+}
+
+/* Micro-animations */
+.hover-scale {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Inputs */
+input,
+textarea {
+  transition: all 0.2s ease;
+  background: var(--color-charcoal-800);
+  border: 1px solid var(--color-charcoal-700);
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--color-teal-500);
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.2);
+  outline: none;
 }
