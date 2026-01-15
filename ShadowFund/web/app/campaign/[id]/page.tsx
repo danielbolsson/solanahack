@@ -7,6 +7,7 @@ import { Program, AnchorProvider, web3, BN } from '@project-serum/anchor';
 import { PublicKey, Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import idl from '../../../idl/shadow_fund.json';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { toast } from 'react-hot-toast';
 
 const PROGRAM_Id = new PublicKey("HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12");
 
@@ -55,7 +56,17 @@ export default function ViewCampaign() {
   }
 
   const handleConfidentialDonate = async () => {
-    if (!wallet.publicKey) return;
+    if (!wallet.publicKey) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    if (!donateAmount || isNaN(Number(donateAmount)) || Number(donateAmount) <= 0) {
+      toast.error('Please enter a valid donation amount');
+      return;
+    }
+
+    const toastId = toast.loading('Processing shielded donation...');
 
     try {
       // @ts-ignore
@@ -75,12 +86,34 @@ export default function ViewCampaign() {
         .rpc();
 
       console.log("Donation Tx:", tx);
-      alert("Success! Tx: " + tx);
+      toast.success('Donation successful! Shielded via ShadowWire.', { id: toastId });
       fetchAccount(); // Refresh
-    } catch (err) {
+      setDonateAmount('');
+    } catch (err: any) {
       console.error("Donation failed:", err);
-      alert("Donation failed: " + err);
+      let message = "Donation failed";
+
+      if (err.message) {
+        if (err.message.includes("insufficient lamports") || err.message.includes("0x1")) {
+          message = "Insufficient funds. Please check your SOL balance.";
+        } else if (err.message.includes("User rejected")) {
+          message = "Transaction rejected by user.";
+        } else {
+          message = err.message;
+        }
+      }
+
+      toast.error(message, { id: toastId });
     }
+  };
+
+  const getDaysLeft = (deadline: number) => {
+    const now = new Date().getTime();
+    const deadlineDate = new Date(deadline * 1000).getTime();
+    const diff = deadlineDate - now;
+    if (diff <= 0) return "Ended";
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return `${days} Days Left`;
   };
 
   const displayCampaign = campaignAccount ? {
@@ -88,7 +121,7 @@ export default function ViewCampaign() {
     description: campaignAccount.description,
     target: campaignAccount.targetAmount.toString(),
     current: campaignAccount.currentAmount.toString(),
-    deadline: campaignAccount.deadline ? new Date(campaignAccount.deadline.toNumber() * 1000).toLocaleDateString() : "Date"
+    deadline: campaignAccount.deadline ? getDaysLeft(campaignAccount.deadline.toNumber()) : "Date"
   } : mockCampaign;
 
   const progress = Number(displayCampaign.target) > 0
@@ -115,8 +148,8 @@ export default function ViewCampaign() {
                 <span className="bg-[var(--color-teal-900)] text-[var(--color-teal-400)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-[var(--color-teal-500)]/20">
                   Verified Campaign
                 </span>
-                <span className="text-[var(--color-text-tertiary)] font-mono text-xs">
-                  ID: {(id as string).slice(0, 6)}...{(id as string).slice(-4)}
+                <span className="bg-[var(--color-charcoal-800)] text-[var(--color-text-secondary)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-[var(--color-charcoal-700)]">
+                  {displayCampaign.deadline}
                 </span>
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
@@ -128,8 +161,9 @@ export default function ViewCampaign() {
               <div className="text-3xl font-bold text-[var(--color-teal-400)] font-mono">
                 {(Number(displayCampaign.current) / LAMPORTS_PER_SOL).toFixed(2)} SOL
               </div>
-              <div className="text-sm text-[var(--color-text-secondary)]">
-                raised of {(Number(displayCampaign.target) / LAMPORTS_PER_SOL).toFixed(2)} SOL goal
+              <div className="flex items-center justify-end gap-2 text-sm text-[var(--color-text-secondary)]">
+                <span>of {(Number(displayCampaign.target) / LAMPORTS_PER_SOL).toFixed(2)} SOL goal</span>
+                <span className="text-[var(--color-teal-500)] font-bold">({progress.toFixed(0)}%)</span>
               </div>
             </div>
           </div>

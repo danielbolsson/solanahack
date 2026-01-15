@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import AppWalletProvider from "./components/AppWalletProvider";
 import Header from "./components/Header";
@@ -19,6 +20,28 @@ export default function RootLayout({
       <body className="antialiased bg-[var(--color-charcoal-900)] text-[var(--color-text-primary)] min-h-screen flex flex-col selection:bg-[var(--color-teal-500)] selection:text-black">
         <AppWalletProvider>
           <Header />
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: '#141518',
+                color: '#EDEDED',
+                border: '1px solid #1C1E23',
+              },
+              success: {
+                iconTheme: {
+                  primary: '#2DD4BF',
+                  secondary: '#0B0C0E',
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: '#EF4444',
+                  secondary: '#0B0C0E',
+                },
+              },
+            }}
+          />
           <main className="flex-grow pt-24 px-6 relative z-10 pb-20">
             <div className="max-w-6xl mx-auto w-full">
               {children}

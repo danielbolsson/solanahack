@@ -6,6 +6,7 @@ import { Program, AnchorProvider, web3, BN } from '@project-serum/anchor';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import idl from '../../idl/shadow_fund.json';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { toast } from 'react-hot-toast';
 
 const PROGRAM_Id = new PublicKey("HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12");
 
@@ -21,7 +22,12 @@ export default function CreateCampaign() {
   const [createdCampaignAddress, setCreatedCampaignAddress] = useState('');
 
   const createCampaign = async () => {
-    if (!wallet.publicKey) return;
+    if (!wallet.publicKey) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    const toastId = toast.loading('Creating campaign...');
 
     try {
       // @ts-ignore
@@ -37,6 +43,10 @@ export default function CreateCampaign() {
       );
 
       console.log("Creating campaign...", { title, description, target, deadline, complianceMode, campaignPda: campaignPda.toString() });
+
+      if (!title || !description || !target || !deadline) {
+        throw new Error("Please fill in all fields");
+      }
 
       const targetBN = new BN(parseFloat(target) * LAMPORTS_PER_SOL);
       const deadlineBN = new BN(new Date(deadline).getTime() / 1000);
@@ -58,18 +68,20 @@ export default function CreateCampaign() {
       console.log("Transaction:", tx);
       setTxHash(tx);
       setCreatedCampaignAddress(campaignPda.toString());
-    } catch (err) {
+
+      toast.success('Campaign launched successfully!', { id: toastId });
+    } catch (err: any) {
       console.error("Error creating campaign:", err);
-      alert("Error: " + err);
+      let message = err.message || "Failed to create campaign";
+      if (message.includes("0x1")) { // Insufficient funds error often has this code or text
+        message = "Insufficient funds for transaction fee";
+      }
+      toast.error(message, { id: toastId });
     }
   };
 
   return (
     <div className="min-h-screen pt-20 pb-20">
-      <div className="absolute top-4 right-4 z-20">
-        <WalletMultiButton />
-      </div>
-
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4 gradient-text">Launch a Vision</h1>

@@ -107,8 +107,15 @@ export default function Home() {
                   <div className="bg-[var(--color-teal-900)] text-[var(--color-teal-400)] text-[10px] uppercase font-bold px-3 py-1 rounded-full tracking-wider">
                     Active
                   </div>
-                  <div className="text-xs text-[var(--color-text-tertiary)] font-mono">
-                    {new Date(camp.account.deadline.toNumber() * 1000).toLocaleDateString()}
+                  <div className="text-xs text-[var(--color-text-tertiary)] font-mono bg-[var(--color-charcoal-900)]/50 px-2 py-1 rounded">
+                    {(() => {
+                      const now = new Date().getTime();
+                      const deadlineDate = new Date(camp.account.deadline.toNumber() * 1000).getTime();
+                      const diff = deadlineDate - now;
+                      if (diff <= 0) return "Ended";
+                      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                      return `${days} Days Left`;
+                    })()}
                   </div>
                 </div>
 
@@ -122,7 +129,10 @@ export default function Home() {
                 <div className="space-y-3">
                   <div className="flex justify-between text-xs font-medium text-[var(--color-text-secondary)]">
                     <span className="text-[var(--color-text-primary)]">{(camp.account.currentAmount.toNumber() / LAMPORTS_PER_SOL).toFixed(2)} SOL</span>
-                    <span>of {(camp.account.targetAmount.toNumber() / LAMPORTS_PER_SOL).toFixed(2)} SOL</span>
+                    <span className="flex items-center gap-1">
+                      <span>of {(camp.account.targetAmount.toNumber() / LAMPORTS_PER_SOL).toFixed(2)} SOL</span>
+                      <span className="text-[var(--color-teal-400)]">({((camp.account.currentAmount.toNumber() / camp.account.targetAmount.toNumber()) * 100).toFixed(0)}%)</span>
+                    </span>
                   </div>
                   <div className="w-full bg-[var(--color-charcoal-900)] rounded-full h-1.5 overflow-hidden">
                     <div
