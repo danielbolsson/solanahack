@@ -7,6 +7,15 @@ declare_id!("HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12");
 pub mod shadow_fund {
     use super::*;
 
+    pub fn initialize_config(ctx: Context<InitializeConfig>, treasury: Pubkey, fee_basis_points: u16) -> Result<()> {
+        let config = &mut ctx.accounts.config;
+        config.treasury = treasury;
+        config.fee_basis_points = fee_basis_points;
+        config.bump = ctx.bumps.config;
+        msg!("Platform Config Initialized. Treasury: {}, Fee: {} bps", treasury, fee_basis_points);
+        Ok(())
+    }
+
     pub fn initialize_campaign(
         ctx: Context<InitializeCampaign>,
         campaign_id: u64,
@@ -37,17 +46,15 @@ pub mod shadow_fund {
 
     pub fn donate(ctx: Context<Donate>, amount: u64, is_sanctioned: bool) -> Result<()> {
         // 1. Compliance Check (Mock Range Protocol)
-        // In production, this would be a CPI to Range Protocol's compliance oracle
         require!(!is_sanctioned, ErrorCode::SanctionedAddress);
 
         // 2. Shielded Transfer (Mock ShadowWire)
-        // Transferred funds are "shielded" (moved to campaign vault)
         let campaign = &mut ctx.accounts.campaign;
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             system_program::Transfer {
                 from: ctx.accounts.backer.to_account_info(),
-                to: campaign.to_account_info(), // Campaign account acts as vault for now
+                to: campaign.to_account_info(), 
             },
         );
         system_program::transfer(cpi_context, amount)?;
@@ -60,21 +67,28 @@ pub mod shadow_fund {
 
     pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
         let campaign = &mut ctx.accounts.campaign;
+        let config = &ctx.accounts.config;
+        let treasury = &ctx.accounts.treasury;
         
+        // Check Config Match
+        require!(config.treasury == treasury.key(), ErrorCode::InvalidTreasury);
+
         // Check if target met
         require!(campaign.current_amount >= campaign.target_amount, ErrorCode::TargetNotMet);
         
-        // Transfer all funds to creator
-        let amount = campaign.to_account_info().lamports();
-        // Reserve rent exemption if needed, but for simplicity taking all distinct from rent logic 
-        // (Anchor usually handles rent exemption safety, but emptying account requires closing. 
-        // We will just transfer available balance minus rent rent_exempt_minimum or just allow closing?)
-        // Let's just transfer `current_amount` back.
+        let total_amount = campaign.current_amount;
+        let fee_amount = (total_amount as u128 * config.fee_basis_points as u128 / 10000) as u64;
+        let creator_amount = total_amount - fee_amount;
+
+        // Transfer Fee to Treasury
+        **campaign.to_account_info().try_borrow_mut_lamports()? -= fee_amount;
+        **treasury.to_account_info().try_borrow_mut_lamports()? += fee_amount;
+
+        // Transfer Remainder to Creator
+        **campaign.to_account_info().try_borrow_mut_lamports()? -= creator_amount;
+        **ctx.accounts.owner.to_account_info().try_borrow_mut_lamports()? += creator_amount;
         
-        **campaign.to_account_info().try_borrow_mut_lamports()? -= campaign.current_amount;
-        **ctx.accounts.owner.to_account_info().try_borrow_mut_lamports()? += campaign.current_amount;
-        
-        msg!("Withdrawn {} to creator", campaign.current_amount);
+        msg!("Withdrawn {} to creator. Fee {} to treasury.", creator_amount, fee_amount);
         campaign.current_amount = 0; // Reset
         
         Ok(())
@@ -83,27 +97,27 @@ pub mod shadow_fund {
     pub fn refund(ctx: Context<Refund>) -> Result<()> {
         let campaign = &mut ctx.accounts.campaign;
         
-        // Check if failed (deadline passed AND target not met)
         require!(Clock::get()?.unix_timestamp > campaign.deadline, ErrorCode::CampaignActive);
         require!(campaign.current_amount < campaign.target_amount, ErrorCode::TargetMet);
 
-        // In a real private system, we'd verify the ZK Proof here that user owns a note.
-        // For this mock, we assume the user provides proof they deposited X amount.
-        // But since we didn't track individual deposits on-chain (privacy!), 
-        // we can't easily refund specific amounts without the ZK proof logic showing the nullifier.
-        // 
-        // FOR HACKATHON/MOCK: functionality is limited without the frontend proof generation.
-        // We will just allow refunding explicit amounts if we trusted the user, 
-        // but since we can't verify, we'll implement a 'Emergency Refund' that dumps everything to a 'recovery' address
-        // or just leave it as a TODO for the ZK integration part.
-        
-        // Actually, user said: "Refund Instruction: Callable by Backers if Target missed."
-        // With ZK, the backer proves they put in X, and we send X back.
-        // We will implement the instruction signature but fail/mock implementation.
-        
         msg!("Refunds would require ZK Proof verification of deposit notes.");
         Ok(())
     }
+}
+
+#[derive(Accounts)]
+pub struct InitializeConfig<'info> {
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + 32 + 2 + 1,
+        seeds = [b"config"],
+        bump
+    )]
+    pub config: Account<'info, PlatformConfig>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -138,6 +152,14 @@ pub struct Withdraw<'info> {
         has_one = owner,
     )]
     pub campaign: Account<'info, Campaign>,
+    #[account(
+        seeds = [b"config"],
+        bump = config.bump
+    )]
+    pub config: Account<'info, PlatformConfig>,
+    #[account(mut)]
+    /// CHECK: Verified against config.treasury
+    pub treasury: UncheckedAccount<'info>,
     #[account(mut)]
     pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -150,6 +172,13 @@ pub struct Refund<'info> {
     #[account(mut)]
     pub backer: Signer<'info>, // Recipient
     pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct PlatformConfig {
+    pub treasury: Pubkey,
+    pub fee_basis_points: u16, // Example: 500 = 5%
+    pub bump: u8,
 }
 
 #[account]
@@ -181,4 +210,6 @@ pub enum ErrorCode {
     NameTooLong,
     #[msg("Description too long")]
     DescriptionTooLong,
+    #[msg("Invalid Treasury Address")]
+    InvalidTreasury,
 }

@@ -9,7 +9,7 @@ crate-type = ["cdylib", "lib"]
 name = "shadow_fund"
 
 [features]
-default = []
+default = ["idl-build"]
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []

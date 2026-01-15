@@ -23,8 +23,8 @@ export default function Header() {
                     <Link
                         href="/"
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${pathname === "/"
-                                ? "text-white bg-[var(--color-charcoal-800)]"
-                                : "text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-charcoal-800)]/50"
+                            ? "text-white bg-[var(--color-charcoal-800)]"
+                            : "text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-charcoal-800)]/50"
                             }`}
                     >
                         Explore
@@ -32,11 +32,20 @@ export default function Header() {
                     <Link
                         href="/create"
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${pathname === "/create"
-                                ? "text-white bg-[var(--color-charcoal-800)]"
-                                : "text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-charcoal-800)]/50"
+                            ? "text-white bg-[var(--color-charcoal-800)]"
+                            : "text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-charcoal-800)]/50"
                             }`}
                     >
                         Start a Campaign
+                    </Link>
+                    <Link
+                        href="/my-campaigns"
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${pathname === "/my-campaigns"
+                            ? "text-white bg-[var(--color-charcoal-800)]"
+                            : "text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-charcoal-800)]/50"
+                            }`}
+                    >
+                        My Campaigns
                     </Link>
                 </nav>
 
