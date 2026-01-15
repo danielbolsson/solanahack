@@ -1,0 +1,7 @@
+[package]
+name = "shadow_fund_proof"
+type = "lib"
+authors = ["ShadowFund Team"]
+compiler_version = ">=0.22.0"
+
+[dependencies]

@@ -1,0 +1,158 @@
+{
+    "version": "0.1.0",
+    "name": "shadow_fund",
+    "instructions": [
+        {
+            "name": "initializeCampaign",
+            "accounts": [
+                {
+                    "name": "campaign",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "owner",
+                    "isMut": true,
+                    "isSigner": true
+                },
+                {
+                    "name": "systemProgram",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": [
+                {
+                    "name": "campaignId",
+                    "type": "u64"
+                },
+                {
+                    "name": "name",
+                    "type": "string"
+                },
+                {
+                    "name": "description",
+                    "type": "string"
+                },
+                {
+                    "name": "targetAmount",
+                    "type": "u64"
+                },
+                {
+                    "name": "deadline",
+                    "type": "i64"
+                }
+            ]
+        },
+        {
+            "name": "donate",
+            "accounts": [
+                {
+                    "name": "campaign",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "backer",
+                    "isMut": true,
+                    "isSigner": true
+                },
+                {
+                    "name": "systemProgram",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": [
+                {
+                    "name": "amount",
+                    "type": "u64"
+                },
+                {
+                    "name": "isSanctioned",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "withdraw",
+            "accounts": [
+                {
+                    "name": "campaign",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "owner",
+                    "isMut": true,
+                    "isSigner": true
+                },
+                {
+                    "name": "systemProgram",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": []
+        },
+        {
+            "name": "refund",
+            "accounts": [
+                {
+                    "name": "campaign",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "backer",
+                    "isMut": true,
+                    "isSigner": true
+                },
+                {
+                    "name": "systemProgram",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": []
+        }
+    ],
+    "accounts": [
+        {
+            "name": "Campaign",
+            "type": {
+                "kind": "struct",
+                "fields": [
+                    {
+                        "name": "owner",
+                        "type": "publicKey"
+                    },
+                    {
+                        "name": "name",
+                        "type": "string"
+                    },
+                    {
+                        "name": "description",
+                        "type": "string"
+                    },
+                    {
+                        "name": "targetAmount",
+                        "type": "u64"
+                    },
+                    {
+                        "name": "currentAmount",
+                        "type": "u64"
+                    },
+                    {
+                        "name": "deadline",
+                        "type": "i64"
+                    },
+                    {
+                        "name": "bump",
+                        "type": "u8"
+                    }
+                ]
+            }
+        }
+    ]
+}
