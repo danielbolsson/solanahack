@@ -19,7 +19,7 @@ export default function AppWalletProvider({
     children: React.ReactNode;
 }) {
     const network = WalletAdapterNetwork.Devnet; // Using localnet for endpoint, but AdapterNetwork enum mainly for Devnet/Mainnet
-    const endpoint = "http://127.0.0.1:8899";
+    const endpoint = "https://api.devnet.solana.com";
     const wallets = useMemo(
         () => [
             new UnsafeBurnerWalletAdapter(),

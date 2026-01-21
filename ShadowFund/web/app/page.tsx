@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { Program, AnchorProvider, BN } from "@project-serum/anchor";
 import idl from "../idl/shadow_fund.json";
 
-const PROGRAM_Id = new PublicKey("HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12");
+const PROGRAM_Id = new PublicKey("3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW");
 
 interface CampaignAccount {
   publicKey: PublicKey;
@@ -29,7 +29,7 @@ export default function Home() {
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const connection = new Connection("http://127.0.0.1:8899");
+        const connection = new Connection("https://api.devnet.solana.com");
         // Read-only provider
         const provider = new AnchorProvider(connection, {
           publicKey: new PublicKey("11111111111111111111111111111111"),

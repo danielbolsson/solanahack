@@ -8,7 +8,14 @@ import idl from '../../idl/shadow_fund.json';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { toast } from 'react-hot-toast';
 
-const PROGRAM_Id = new PublicKey("HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12");
+const PROGRAM_Id = new PublicKey("3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW");
+
+interface Tier {
+  name: string;
+  description: string;
+  amount: string;
+  limit: string;
+}
 
 export default function CreateCampaign() {
   const { connection } = useConnection();
@@ -18,8 +25,23 @@ export default function CreateCampaign() {
   const [target, setTarget] = useState('');
   const [deadline, setDeadline] = useState('');
   const [complianceMode, setComplianceMode] = useState(false);
+
+  // Reward Tiers State
+  const [tiers, setTiers] = useState<Tier[]>([]);
+  const [newTier, setNewTier] = useState<Tier>({ name: '', description: '', amount: '', limit: '' });
+
   const [txHash, setTxHash] = useState('');
   const [createdCampaignAddress, setCreatedCampaignAddress] = useState('');
+
+  const addTier = () => {
+    if (!newTier.name || !newTier.amount) return toast.error("Name and Amount are required");
+    setTiers([...tiers, newTier]);
+    setNewTier({ name: '', description: '', amount: '', limit: '' });
+  };
+
+  const removeTier = (index: number) => {
+    setTiers(tiers.filter((_, i) => i !== index));
+  };
 
   const createCampaign = async () => {
     if (!wallet.publicKey) {
@@ -51,6 +73,22 @@ export default function CreateCampaign() {
       const targetBN = new BN(parseFloat(target) * LAMPORTS_PER_SOL);
       const deadlineBN = new BN(new Date(deadline).getTime() / 1000);
 
+      const addTierIxs = await Promise.all(tiers.map(async (tier) => {
+        const amountBN = new BN(parseFloat(tier.amount) * LAMPORTS_PER_SOL);
+        const limitVal = tier.limit ? parseInt(tier.limit) : 0;
+        return await program.methods.addRewardTier(
+          tier.name,
+          tier.description || "",
+          amountBN,
+          limitVal
+        )
+          .accounts({
+            campaign: campaignPda,
+            owner: wallet.publicKey as PublicKey,
+          })
+          .instruction();
+      }));
+
       const tx = await program.methods.initializeCampaign(
         campaignId,
         title,
@@ -60,9 +98,10 @@ export default function CreateCampaign() {
       )
         .accounts({
           campaign: campaignPda,
-          owner: wallet.publicKey,
+          owner: wallet.publicKey as PublicKey,
           systemProgram: web3.SystemProgram.programId,
         })
+        .postInstructions(addTierIxs)
         .rpc();
 
       console.log("Transaction:", tx);
@@ -128,6 +167,33 @@ export default function CreateCampaign() {
                   value={deadline} onChange={e => setDeadline(e.target.value)}
                 />
               </div>
+            </div>
+
+            {/* Reward Tiers Section */}
+            <div className="bg-[var(--color-charcoal-900)] p-6 rounded-xl border border-[var(--color-charcoal-700)]">
+              <h3 className="text-lg font-bold text-white mb-4">Reward Tiers</h3>
+
+              {tiers.length > 0 && (
+                <div className="space-y-3 mb-6">
+                  {tiers.map((t, i) => (
+                    <div key={i} className="flex justify-between items-center bg-[var(--color-charcoal-800)] p-3 rounded-lg border border-[var(--color-charcoal-600)]">
+                      <div>
+                        <div className="font-bold text-white">{t.name} <span className="text-[var(--color-teal-400)]">({t.amount} SOL)</span></div>
+                        <div className="text-xs text-[var(--color-text-secondary)]">{t.description.substring(0, 50)}...</div>
+                      </div>
+                      <button onClick={() => removeTier(i)} className="text-red-400 hover:text-red-300 text-sm">Remove</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <input type="text" placeholder="Tier Name (e.g. VIP)" className="p-3 bg-[var(--color-charcoal-800)] rounded-lg text-white" value={newTier.name} onChange={e => setNewTier({ ...newTier, name: e.target.value })} />
+                <input type="number" placeholder="Price (SOL)" className="p-3 bg-[var(--color-charcoal-800)] rounded-lg text-white" value={newTier.amount} onChange={e => setNewTier({ ...newTier, amount: e.target.value })} />
+                <input type="number" placeholder="Limit (0 = Ultd)" className="p-3 bg-[var(--color-charcoal-800)] rounded-lg text-white" value={newTier.limit} onChange={e => setNewTier({ ...newTier, limit: e.target.value })} />
+                <input type="text" placeholder="Description" className="p-3 bg-[var(--color-charcoal-800)] rounded-lg text-white" value={newTier.description} onChange={e => setNewTier({ ...newTier, description: e.target.value })} />
+              </div>
+              <button onClick={addTier} type="button" className="w-full py-2 bg-[var(--color-charcoal-800)] hover:bg-[var(--color-charcoal-700)] text-[var(--color-teal-400)] rounded-lg text-sm font-bold border border-[var(--color-charcoal-600)]">+ Add Tier</button>
             </div>
 
             <div className="flex items-center space-x-4 p-5 bg-[var(--color-charcoal-900)] rounded-xl border border-[var(--color-charcoal-700)] hover:border-[var(--color-charcoal-700)] transition-colors group">

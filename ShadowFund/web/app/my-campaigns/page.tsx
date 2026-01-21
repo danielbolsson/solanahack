@@ -8,7 +8,7 @@ import idl from '../../idl/shadow_fund.json';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 
-const PROGRAM_Id = new PublicKey("HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12");
+const PROGRAM_Id = new PublicKey("3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW");
 
 export default function MyCampaigns() {
     const { connection } = useConnection();
@@ -50,6 +50,10 @@ export default function MyCampaigns() {
     };
 
     const handleWithdraw = async (campaignPubkey: PublicKey, campaignAccount: any) => {
+        if (!wallet.publicKey) {
+            toast.error("Wallet not connected");
+            return;
+        }
         const toastId = toast.loading("Processing withdrawal...");
         try {
             // @ts-ignore

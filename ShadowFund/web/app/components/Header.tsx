@@ -47,6 +47,15 @@ export default function Header() {
                     >
                         My Campaigns
                     </Link>
+                    <Link
+                        href="/my-rewards"
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${pathname === "/my-rewards"
+                            ? "text-white bg-[var(--color-charcoal-800)]"
+                            : "text-[var(--color-text-secondary)] hover:text-white hover:bg-[var(--color-charcoal-800)]/50"
+                            }`}
+                    >
+                        My Rewards
+                    </Link>
                 </nav>
 
                 <div className="flex items-center gap-4">

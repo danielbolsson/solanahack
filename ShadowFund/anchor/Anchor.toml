@@ -1,17 +1,25 @@
 
+[toolchain]
+anchor_version = "0.29.0"
+
+
 [features]
 resolution = true
 skip-lint = false
 
 [programs.localnet]
-shadow-fund = "HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12"
+shadow-fund = "3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW"
+
+[programs.devnet]
+shadow-fund = "3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run mocha -t 1000000 tests/"
+init-treasury = "node scripts/initialize-treasury.js HvM4EBsg4Kj3wL3pdj3Y7UXz1GjnRzpyeHppWnBiMPzC"

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-declare_id!("HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12");
+declare_id!("3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW");
 
 #[program]
 pub mod shadow_fund {
@@ -44,12 +44,62 @@ pub mod shadow_fund {
         Ok(())
     }
 
-    pub fn donate(ctx: Context<Donate>, amount: u64, is_sanctioned: bool) -> Result<()> {
+    pub fn add_reward_tier(
+        ctx: Context<AddRewardTier>,
+        name: String,
+        description: String,
+        amount: u64,
+        limit: u32,
+    ) -> Result<()> {
+        let campaign = &mut ctx.accounts.campaign;
+        require!(name.len() <= 50, ErrorCode::NameTooLong);
+        require!(description.len() <= 200, ErrorCode::DescriptionTooLong);
+        require!(campaign.tiers.len() < 10, ErrorCode::TooManyTiers);
+
+        let tier = RewardTier {
+            name,
+            description,
+            amount,
+            limit,
+            claimed: 0,
+        };
+        campaign.tiers.push(tier);
+        Ok(())
+    }
+
+    pub fn donate(ctx: Context<Donate>, amount: u64, is_sanctioned: bool, tier_index: Option<u8>) -> Result<()> {
         // 1. Compliance Check (Mock Range Protocol)
         require!(!is_sanctioned, ErrorCode::SanctionedAddress);
 
-        // 2. Shielded Transfer (Mock ShadowWire)
         let campaign = &mut ctx.accounts.campaign;
+
+        // Validations for Rewards
+        if let Some(index) = tier_index {
+             let idx = index as usize;
+             require!(idx < campaign.tiers.len(), ErrorCode::InvalidTierIndex);
+
+             let tier = &mut campaign.tiers[idx];
+             require!(amount >= tier.amount, ErrorCode::InsufficientAmountForTier);
+             
+             if tier.limit > 0 {
+                  require!(tier.claimed < tier.limit, ErrorCode::TierSoldOut);
+             }
+
+             tier.claimed += 1;
+
+             // Initialize/Update Backer Receipt
+             // We require the account to be present if a tier is selected
+             require!(ctx.accounts.backer_receipt.is_some(), ErrorCode::AccountNotInitialized); // Standard Anchor error or custom one
+             
+             if let Some(backer_receipt) = &mut ctx.accounts.backer_receipt {
+                 backer_receipt.campaign = campaign.key();
+                 backer_receipt.backer = ctx.accounts.backer.key();
+                 backer_receipt.tier_index = index;
+                 backer_receipt.amount_paid += amount;
+             }
+        }
+
+        // 2. Shielded Transfer (Mock ShadowWire)
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             system_program::Transfer {
@@ -96,13 +146,40 @@ pub mod shadow_fund {
 
     pub fn refund(ctx: Context<Refund>) -> Result<()> {
         let campaign = &mut ctx.accounts.campaign;
+        let backer_receipt = &ctx.accounts.backer_receipt;
         
+        // 1. Check if refund is valid (Deadline passed AND Target NOT met)
         require!(Clock::get()?.unix_timestamp > campaign.deadline, ErrorCode::CampaignActive);
         require!(campaign.current_amount < campaign.target_amount, ErrorCode::TargetMet);
 
-        msg!("Refunds would require ZK Proof verification of deposit notes.");
-        Ok(())
+        // 2. Determine refund amount
+        let refund_amount = backer_receipt.amount_paid;
+        require!(refund_amount > 0, ErrorCode::NoFundsToRefund);
+
+        // 3. Transfer SOL back to backer (CPI)
+        // We act as the PDA (Campaign) sending funds back
+        **campaign.to_account_info().try_borrow_mut_lamports()? -= refund_amount;
+        **ctx.accounts.backer.to_account_info().try_borrow_mut_lamports()? += refund_amount;
+        
+        msg!("Refunded {} lamports to backer.", refund_amount);
+        
+        // 4. Update Campaign State (Optional, but good accounting)
+        campaign.current_amount = campaign.current_amount.checked_sub(refund_amount).unwrap();
+
+        Ok(()) 
+        // Note: The backer_receipt account is closed at the end of this instruction 
+        // due to the #[account(close = backer)] constraint in the struct.
     }
+}
+
+#[derive(Accounts)]
+pub struct AddRewardTier<'info> {
+    #[account(
+        mut,
+        has_one = owner,
+    )]
+    pub campaign: Account<'info, Campaign>,
+    pub owner: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -137,11 +214,20 @@ pub struct InitializeCampaign<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(amount: u64, is_sanctioned: bool, tier_index: Option<u8>)]
 pub struct Donate<'info> {
     #[account(mut)]
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub backer: Signer<'info>,
+    #[account(
+         init_if_needed,
+         payer = backer,
+         seeds = [b"backer", campaign.key().as_ref(), backer.key().as_ref()],
+         bump,
+         space = 8 + 32 + 32 + 1 + 8
+    )]
+    pub backer_receipt: Option<Account<'info, Backer>>,
     pub system_program: Program<'info, System>,
 }
 
@@ -170,7 +256,18 @@ pub struct Refund<'info> {
      #[account(mut)]
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
-    pub backer: Signer<'info>, // Recipient
+    pub backer: Signer<'info>, // Recipient and Close Authority
+    
+    #[account(
+        mut,
+        close = backer, // Refund rent to backer and close the receipt so they can't double refund
+        seeds = [b"backer", campaign.key().as_ref(), backer.key().as_ref()],
+        bump,
+        has_one = campaign,
+        has_one = backer
+    )]
+    pub backer_receipt: Account<'info, Backer>,
+    
     pub system_program: Program<'info, System>,
 }
 
@@ -190,6 +287,24 @@ pub struct Campaign {
     pub current_amount: u64,
     pub deadline: i64,
     pub bump: u8,
+    pub tiers: Vec<RewardTier>,
+}
+
+#[account]
+pub struct Backer {
+    pub campaign: Pubkey,
+    pub backer: Pubkey,
+    pub tier_index: u8,
+    pub amount_paid: u64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct RewardTier {
+    pub name: String,        // 4 + 50
+    pub description: String, // 4 + 200
+    pub amount: u64,         // 8
+    pub limit: u32,          // 4
+    pub claimed: u32,        // 4
 }
 
 #[error_code]
@@ -212,4 +327,16 @@ pub enum ErrorCode {
     DescriptionTooLong,
     #[msg("Invalid Treasury Address")]
     InvalidTreasury,
+    #[msg("Too many tiers")]
+    TooManyTiers,
+    #[msg("Invalid tier index")]
+    InvalidTierIndex,
+    #[msg("Insufficient amount for tier")]
+    InsufficientAmountForTier,
+    #[msg("Tier sold out")]
+    TierSoldOut,
+    #[msg("Account not initialized")]
+    AccountNotInitialized,
+    #[msg("No funds to refund")]
+    NoFundsToRefund,
 }

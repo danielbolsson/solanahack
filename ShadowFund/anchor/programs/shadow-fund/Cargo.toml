@@ -20,7 +20,7 @@ custom-heap = []
 custom-panic = []
 
 [dependencies]
-anchor-lang = "0.29.0"
+anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
 blake3 = "=1.5.1"
 borsh = "=1.5.1"
 borsh-derive = "=1.5.1"

@@ -9,7 +9,7 @@ import idl from '../../../idl/shadow_fund.json';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { toast } from 'react-hot-toast';
 
-const PROGRAM_Id = new PublicKey("HNnG2p8trr7N1HdfMEtx4e5ARwZnamhG6X7wib9AiE12");
+const PROGRAM_Id = new PublicKey("3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW");
 
 export default function ViewCampaign() {
   const { id } = useParams();
@@ -17,6 +17,8 @@ export default function ViewCampaign() {
   const wallet = useWallet();
   const [donateAmount, setDonateAmount] = useState('');
   const [campaignAccount, setCampaignAccount] = useState<any>(null);
+  const [selectedTierIndex, setSelectedTierIndex] = useState<number | null>(null);
+  const [refundEligibleReceipt, setRefundEligibleReceipt] = useState<any>(null);
 
   // Mock data fallback
   const mockCampaign = {
@@ -24,7 +26,8 @@ export default function ViewCampaign() {
     description: "Fetching details from the Solana Network...",
     target: 0,
     current: 0,
-    deadline: 0
+    deadline: 0,
+    tiers: []
   };
 
   useEffect(() => {
@@ -37,7 +40,7 @@ export default function ViewCampaign() {
     try {
       // Create a dedicated connection for fetching if needed, or use the hook's. 
       // Using a fresh connection ensures availability even if wallet adapter is quirky.
-      const rpcConnection = new Connection("http://127.0.0.1:8899", "confirmed");
+      const rpcConnection = new Connection("https://api.devnet.solana.com", "confirmed");
 
       // Provider for reading doesn't strictly need a connected wallet if we use a dummy
       // @ts-ignore
@@ -50,10 +53,56 @@ export default function ViewCampaign() {
       const account = await program.account.campaign.fetch(new PublicKey(id as string));
       console.log("Fetched account:", account);
       setCampaignAccount(account);
+
+      // Check for Refund Eligibility (Backer Receipt)
+      if (wallet.publicKey) {
+        const [backerPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from("backer"), new PublicKey(id as string).toBuffer(), wallet.publicKey.toBuffer()],
+          PROGRAM_Id
+        );
+        try {
+          const receipt = await program.account.backer.fetch(backerPda);
+          console.log("Found receipt for refund check:", receipt);
+          setRefundEligibleReceipt({ ...receipt, publicKey: backerPda });
+        } catch (e) {
+          console.log("No receipt found for user (might be stealth donor or non-donor)");
+          setRefundEligibleReceipt(null);
+        }
+      }
+
     } catch (e) {
       console.error("Failed to fetch account:", e);
     }
   }
+
+  const handleRefund = async () => {
+    if (!refundEligibleReceipt) return;
+    const toastId = toast.loading("Processing Refund...");
+
+    try {
+      // @ts-ignore
+      const provider = new AnchorProvider(connection, wallet, {});
+      // @ts-ignore
+      const program = new Program(idl, PROGRAM_Id, provider);
+
+      const tx = await program.methods.refund()
+        .accounts({
+          campaign: new PublicKey(id as string),
+          backer: wallet.publicKey as PublicKey,
+          backerReceipt: refundEligibleReceipt.publicKey,
+          systemProgram: web3.SystemProgram.programId
+        })
+        .rpc();
+
+      console.log("Refund Tx:", tx);
+      toast.success("Refund Processed! Funds returned to wallet.", { id: toastId });
+      setRefundEligibleReceipt(null); // Clear receipt as it is closed
+      fetchAccount();
+    } catch (e: any) {
+      console.error("Refund failed:", e);
+      toast.error("Refund failed: " + e.message, { id: toastId });
+    }
+  };
 
   const handleConfidentialDonate = async () => {
     if (!wallet.publicKey) {
@@ -77,18 +126,36 @@ export default function ViewCampaign() {
       const amountBN = new BN(parseFloat(donateAmount) * LAMPORTS_PER_SOL);
       const isSanctioned = false;
 
-      const tx = await program.methods.donate(amountBN, isSanctioned)
-        .accounts({
-          campaign: new PublicKey(id as string),
-          backer: wallet.publicKey,
-          systemProgram: web3.SystemProgram.programId,
-        })
+      // Check if we need to create a receipt
+      let backerPda = null;
+      if (selectedTierIndex !== null) {
+        [backerPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from("backer"), new PublicKey(id as string).toBuffer(), wallet.publicKey.toBuffer()],
+          PROGRAM_Id
+        );
+      }
+
+      const txAccountContext = {
+        campaign: new PublicKey(id as string),
+        backer: wallet.publicKey as PublicKey,
+        systemProgram: web3.SystemProgram.programId,
+        // Only include backerReceipt if it exists
+        ...(backerPda && { backerReceipt: backerPda })
+      };
+
+      const tx = await program.methods.donate(amountBN, isSanctioned, selectedTierIndex !== null ? selectedTierIndex : null)
+        .accounts(txAccountContext)
         .rpc();
 
       console.log("Donation Tx:", tx);
-      toast.success('Donation successful! Shielded via ShadowWire.', { id: toastId });
+      if (selectedTierIndex === null) {
+        toast.success('Stealth Donation successful! No on-chain link created.', { id: toastId });
+      } else {
+        toast.success('Donation successful! Shielded via ShadowWire.', { id: toastId });
+      }
       fetchAccount(); // Refresh
       setDonateAmount('');
+      setSelectedTierIndex(null);
     } catch (err: any) {
       console.error("Donation failed:", err);
       let message = "Donation failed";
@@ -121,7 +188,8 @@ export default function ViewCampaign() {
     description: campaignAccount.description,
     target: campaignAccount.targetAmount.toString(),
     current: campaignAccount.currentAmount.toString(),
-    deadline: campaignAccount.deadline ? getDaysLeft(campaignAccount.deadline.toNumber()) : "Date"
+    deadline: campaignAccount.deadline ? getDaysLeft(campaignAccount.deadline.toNumber()) : "Date",
+    tiers: campaignAccount.tiers || []
   } : mockCampaign;
 
   const progress = Number(displayCampaign.target) > 0
@@ -144,13 +212,36 @@ export default function ViewCampaign() {
 
           <div className="flex flex-col md:flex-row justify-between items-start mb-8 relative z-10">
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="bg-[var(--color-teal-900)] text-[var(--color-teal-400)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-[var(--color-teal-500)]/20">
-                  Verified Campaign
-                </span>
-                <span className="bg-[var(--color-charcoal-800)] text-[var(--color-text-secondary)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-[var(--color-charcoal-700)]">
-                  {displayCampaign.deadline}
-                </span>
+              <div className="flex flex-col gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <span className="bg-[var(--color-teal-900)] text-[var(--color-teal-400)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-[var(--color-teal-500)]/20">
+                    Verified Campaign
+                  </span>
+                  <span className="bg-[var(--color-charcoal-800)] text-[var(--color-text-secondary)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-[var(--color-charcoal-700)]">
+                    {displayCampaign.deadline}
+                  </span>
+                </div>
+
+                {/* Refund Banner */}
+                {displayCampaign.deadline === "Ended" && Number(displayCampaign.current) < Number(displayCampaign.target) && (
+                  <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 mt-2">
+                    <h4 className="text-red-400 font-bold mb-1">Campaign Failed</h4>
+                    <p className="text-sm text-red-200/70 mb-3">This campaign did not meet its goal by the deadline.</p>
+
+                    {refundEligibleReceipt ? (
+                      <button
+                        onClick={handleRefund}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded shadow-lg transition-colors"
+                      >
+                        Claim Refund ({(refundEligibleReceipt.amountPaid.toNumber() / LAMPORTS_PER_SOL).toFixed(2)} SOL)
+                      </button>
+                    ) : (
+                      <div className="text-xs text-red-300/50 italic">
+                        No refundable receipts found (Stealth donations cannot be refunded automatically).
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
                 {displayCampaign.title}
@@ -184,6 +275,63 @@ export default function ViewCampaign() {
                 </p>
               </div>
 
+              {/* Tiers List */}
+              {displayCampaign.tiers.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold text-white mb-4 border-b border-[var(--color-charcoal-700)] pb-2 inline-block">Select a Reward</h3>
+
+                  {/* No Reward Option */}
+                  <div
+                    onClick={() => {
+                      setSelectedTierIndex(null);
+                      setDonateAmount('');
+                    }}
+                    className={`p-5 rounded-xl border transition-all cursor-pointer ${selectedTierIndex === null
+                      ? 'bg-[var(--color-teal-900)]/20 border-[var(--color-teal-500)] shadow-[0_0_15px_rgba(45,212,191,0.2)]'
+                      : 'bg-[var(--color-charcoal-800)] border-[var(--color-charcoal-600)] hover:border-[var(--color-teal-500)]'
+                      }`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-lg font-bold text-white">Stealth Mode</h4>
+                      <span className="text-[var(--color-text-secondary)] font-mono text-sm">(No Reward)</span>
+                    </div>
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      Support the project without claiming a reward. No "Backer Receipt" will be created, ensuring maximum privacy.
+                    </p>
+                  </div>
+
+                  {displayCampaign.tiers.map((tier: any, idx: number) => {
+                    const tierAmount = tier.amount.toNumber() / LAMPORTS_PER_SOL;
+                    const isSoldOut = tier.limit > 0 && tier.claimed >= tier.limit;
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          if (!isSoldOut) {
+                            setSelectedTierIndex(idx);
+                            setDonateAmount(tierAmount.toString());
+                          }
+                        }}
+                        className={`p-5 rounded-xl border transition-all cursor-pointer ${selectedTierIndex === idx
+                          ? 'bg-[var(--color-teal-900)]/20 border-[var(--color-teal-500)] shadow-[0_0_15px_rgba(45,212,191,0.2)]'
+                          : 'bg-[var(--color-charcoal-800)] border-[var(--color-charcoal-600)] hover:border-[var(--color-teal-500)]'
+                          } ${isSoldOut ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="text-lg font-bold text-white">{tier.name}</h4>
+                          <span className="text-[var(--color-teal-400)] font-mono font-bold">{tierAmount} SOL</span>
+                        </div>
+                        <p className="text-sm text-[var(--color-text-secondary)] mb-3">{tier.description}</p>
+                        <div className="flex justify-between text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide">
+                          <span>{tier.limit > 0 ? `${tier.claimed}/${tier.limit} Claimed` : `${tier.claimed} Claimed`}</span>
+                          {isSoldOut && <span className="text-red-400 font-bold">Sold Out</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="bg-[var(--color-charcoal-800)]/50 rounded-xl p-6 border border-[var(--color-charcoal-700)]">
                 <h4 className="font-bold text-white mb-2 flex items-center gap-2">
                   <svg className="w-5 h-5 text-[var(--color-teal-500)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
@@ -212,6 +360,12 @@ export default function ViewCampaign() {
                       value={donateAmount} onChange={e => setDonateAmount(e.target.value)}
                     />
                   </div>
+
+                  {selectedTierIndex !== null && (
+                    <div className="text-xs text-[var(--color-teal-400)] mb-1">
+                      Warning: Selected Tier requires minimum {displayCampaign.tiers[selectedTierIndex].amount.toNumber() / LAMPORTS_PER_SOL} SOL
+                    </div>
+                  )}
 
                   <button
                     onClick={handleConfidentialDonate}

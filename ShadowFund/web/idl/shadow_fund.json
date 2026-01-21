@@ -3,6 +3,36 @@
     "name": "shadow_fund",
     "instructions": [
         {
+            "name": "initializeConfig",
+            "accounts": [
+                {
+                    "name": "config",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "authority",
+                    "isMut": true,
+                    "isSigner": true
+                },
+                {
+                    "name": "systemProgram",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": [
+                {
+                    "name": "treasury",
+                    "type": "publicKey"
+                },
+                {
+                    "name": "feeBasisPoints",
+                    "type": "u16"
+                }
+            ]
+        },
+        {
             "name": "initializeCampaign",
             "accounts": [
                 {
@@ -45,6 +75,39 @@
             ]
         },
         {
+            "name": "addRewardTier",
+            "accounts": [
+                {
+                    "name": "campaign",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "owner",
+                    "isMut": false,
+                    "isSigner": true
+                }
+            ],
+            "args": [
+                {
+                    "name": "name",
+                    "type": "string"
+                },
+                {
+                    "name": "description",
+                    "type": "string"
+                },
+                {
+                    "name": "amount",
+                    "type": "u64"
+                },
+                {
+                    "name": "limit",
+                    "type": "u32"
+                }
+            ]
+        },
+        {
             "name": "donate",
             "accounts": [
                 {
@@ -56,6 +119,12 @@
                     "name": "backer",
                     "isMut": true,
                     "isSigner": true
+                },
+                {
+                    "name": "backerReceipt",
+                    "isMut": true,
+                    "isSigner": false,
+                    "isOptional": true
                 },
                 {
                     "name": "systemProgram",
@@ -71,6 +140,12 @@
                 {
                     "name": "isSanctioned",
                     "type": "bool"
+                },
+                {
+                    "name": "tierIndex",
+                    "type": {
+                        "option": "u8"
+                    }
                 }
             ]
         },
@@ -79,6 +154,16 @@
             "accounts": [
                 {
                     "name": "campaign",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "config",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "treasury",
                     "isMut": true,
                     "isSigner": false
                 },
@@ -109,6 +194,11 @@
                     "isSigner": true
                 },
                 {
+                    "name": "backerReceipt",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
                     "name": "systemProgram",
                     "isMut": false,
                     "isSigner": false
@@ -118,6 +208,26 @@
         }
     ],
     "accounts": [
+        {
+            "name": "PlatformConfig",
+            "type": {
+                "kind": "struct",
+                "fields": [
+                    {
+                        "name": "treasury",
+                        "type": "publicKey"
+                    },
+                    {
+                        "name": "feeBasisPoints",
+                        "type": "u16"
+                    },
+                    {
+                        "name": "bump",
+                        "type": "u8"
+                    }
+                ]
+            }
+        },
         {
             "name": "Campaign",
             "type": {
@@ -150,9 +260,151 @@
                     {
                         "name": "bump",
                         "type": "u8"
+                    },
+                    {
+                        "name": "tiers",
+                        "type": {
+                            "vec": {
+                                "defined": "RewardTier"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Backer",
+            "type": {
+                "kind": "struct",
+                "fields": [
+                    {
+                        "name": "campaign",
+                        "type": "publicKey"
+                    },
+                    {
+                        "name": "backer",
+                        "type": "publicKey"
+                    },
+                    {
+                        "name": "tierIndex",
+                        "type": "u8"
+                    },
+                    {
+                        "name": "amountPaid",
+                        "type": "u64"
                     }
                 ]
             }
         }
-    ]
+    ],
+    "types": [
+        {
+            "name": "RewardTier",
+            "type": {
+                "kind": "struct",
+                "fields": [
+                    {
+                        "name": "name",
+                        "type": "string"
+                    },
+                    {
+                        "name": "description",
+                        "type": "string"
+                    },
+                    {
+                        "name": "amount",
+                        "type": "u64"
+                    },
+                    {
+                        "name": "limit",
+                        "type": "u32"
+                    },
+                    {
+                        "name": "claimed",
+                        "type": "u32"
+                    }
+                ]
+            }
+        }
+    ],
+    "errors": [
+        {
+            "code": 6000,
+            "name": "InvalidTarget",
+            "msg": "Target amount must be positive"
+        },
+        {
+            "code": 6001,
+            "name": "InvalidDeadline",
+            "msg": "Deadline must be in the future"
+        },
+        {
+            "code": 6002,
+            "name": "SanctionedAddress",
+            "msg": "Address is sanctioned by Range Protocol"
+        },
+        {
+            "code": 6003,
+            "name": "TargetNotMet",
+            "msg": "Campaign target not met"
+        },
+        {
+            "code": 6004,
+            "name": "CampaignActive",
+            "msg": "Campaign is still active"
+        },
+        {
+            "code": 6005,
+            "name": "TargetMet",
+            "msg": "Target already met"
+        },
+        {
+            "code": 6006,
+            "name": "NameTooLong",
+            "msg": "Name too long"
+        },
+        {
+            "code": 6007,
+            "name": "DescriptionTooLong",
+            "msg": "Description too long"
+        },
+        {
+            "code": 6008,
+            "name": "InvalidTreasury",
+            "msg": "Invalid Treasury Address"
+        },
+        {
+            "code": 6009,
+            "name": "TooManyTiers",
+            "msg": "Too many tiers"
+        },
+        {
+            "code": 6010,
+            "name": "InvalidTierIndex",
+            "msg": "Invalid tier index"
+        },
+        {
+            "code": 6011,
+            "name": "InsufficientAmountForTier",
+            "msg": "Insufficient amount for tier"
+        },
+        {
+            "code": 6012,
+            "name": "TierSoldOut",
+            "msg": "Tier sold out"
+        },
+        {
+            "code": 6013,
+            "name": "AccountNotInitialized",
+            "msg": "Account not initialized"
+        },
+        {
+            "code": 6014,
+            "name": "NoFundsToRefund",
+            "msg": "No funds to refund"
+        }
+    ],
+    "metadata": {
+        "address": "3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW"
+    }
 }
