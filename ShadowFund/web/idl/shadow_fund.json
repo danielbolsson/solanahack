@@ -1,410 +1,1013 @@
 {
-    "version": "0.1.0",
+  "address": "3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW",
+  "metadata": {
     "name": "shadow_fund",
-    "instructions": [
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_reward_tier",
+      "discriminator": [
+        47,
+        242,
+        34,
+        203,
+        113,
+        138,
+        46,
+        245
+      ],
+      "accounts": [
         {
-            "name": "initializeConfig",
-            "accounts": [
-                {
-                    "name": "config",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
-                    "name": "authority",
-                    "isMut": true,
-                    "isSigner": true
-                },
-                {
-                    "name": "systemProgram",
-                    "isMut": false,
-                    "isSigner": false
-                }
-            ],
-            "args": [
-                {
-                    "name": "treasury",
-                    "type": "publicKey"
-                },
-                {
-                    "name": "feeBasisPoints",
-                    "type": "u16"
-                }
-            ]
+          "name": "campaign",
+          "writable": true
         },
         {
-            "name": "initializeCampaign",
-            "accounts": [
-                {
-                    "name": "campaign",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
-                    "name": "owner",
-                    "isMut": true,
-                    "isSigner": true
-                },
-                {
-                    "name": "systemProgram",
-                    "isMut": false,
-                    "isSigner": false
-                }
-            ],
-            "args": [
-                {
-                    "name": "campaignId",
-                    "type": "u64"
-                },
-                {
-                    "name": "name",
-                    "type": "string"
-                },
-                {
-                    "name": "description",
-                    "type": "string"
-                },
-                {
-                    "name": "targetAmount",
-                    "type": "u64"
-                },
-                {
-                    "name": "deadline",
-                    "type": "i64"
-                }
-            ]
-        },
-        {
-            "name": "addRewardTier",
-            "accounts": [
-                {
-                    "name": "campaign",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
-                    "name": "owner",
-                    "isMut": false,
-                    "isSigner": true
-                }
-            ],
-            "args": [
-                {
-                    "name": "name",
-                    "type": "string"
-                },
-                {
-                    "name": "description",
-                    "type": "string"
-                },
-                {
-                    "name": "amount",
-                    "type": "u64"
-                },
-                {
-                    "name": "limit",
-                    "type": "u32"
-                }
-            ]
-        },
-        {
-            "name": "donate",
-            "accounts": [
-                {
-                    "name": "campaign",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
-                    "name": "backer",
-                    "isMut": true,
-                    "isSigner": true
-                },
-                {
-                    "name": "backerReceipt",
-                    "isMut": true,
-                    "isSigner": false,
-                    "isOptional": true
-                },
-                {
-                    "name": "systemProgram",
-                    "isMut": false,
-                    "isSigner": false
-                }
-            ],
-            "args": [
-                {
-                    "name": "amount",
-                    "type": "u64"
-                },
-                {
-                    "name": "isSanctioned",
-                    "type": "bool"
-                },
-                {
-                    "name": "tierIndex",
-                    "type": {
-                        "option": "u8"
-                    }
-                }
-            ]
-        },
-        {
-            "name": "withdraw",
-            "accounts": [
-                {
-                    "name": "campaign",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
-                    "name": "config",
-                    "isMut": false,
-                    "isSigner": false
-                },
-                {
-                    "name": "treasury",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
-                    "name": "owner",
-                    "isMut": true,
-                    "isSigner": true
-                },
-                {
-                    "name": "systemProgram",
-                    "isMut": false,
-                    "isSigner": false
-                }
-            ],
-            "args": []
-        },
-        {
-            "name": "refund",
-            "accounts": [
-                {
-                    "name": "campaign",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
-                    "name": "backer",
-                    "isMut": true,
-                    "isSigner": true
-                },
-                {
-                    "name": "backerReceipt",
-                    "isMut": true,
-                    "isSigner": false
-                },
-                {
-                    "name": "systemProgram",
-                    "isMut": false,
-                    "isSigner": false
-                }
-            ],
-            "args": []
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "campaign"
+          ]
         }
-    ],
-    "accounts": [
+      ],
+      "args": [
         {
-            "name": "PlatformConfig",
-            "type": {
-                "kind": "struct",
-                "fields": [
-                    {
-                        "name": "treasury",
-                        "type": "publicKey"
-                    },
-                    {
-                        "name": "feeBasisPoints",
-                        "type": "u16"
-                    },
-                    {
-                        "name": "bump",
-                        "type": "u8"
-                    }
-                ]
-            }
+          "name": "name",
+          "type": "string"
         },
         {
-            "name": "Campaign",
-            "type": {
-                "kind": "struct",
-                "fields": [
-                    {
-                        "name": "owner",
-                        "type": "publicKey"
-                    },
-                    {
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "name": "description",
-                        "type": "string"
-                    },
-                    {
-                        "name": "targetAmount",
-                        "type": "u64"
-                    },
-                    {
-                        "name": "currentAmount",
-                        "type": "u64"
-                    },
-                    {
-                        "name": "deadline",
-                        "type": "i64"
-                    },
-                    {
-                        "name": "bump",
-                        "type": "u8"
-                    },
-                    {
-                        "name": "tiers",
-                        "type": {
-                            "vec": {
-                                "defined": "RewardTier"
-                            }
-                        }
-                    }
-                ]
-            }
+          "name": "description",
+          "type": "string"
         },
         {
-            "name": "Backer",
-            "type": {
-                "kind": "struct",
-                "fields": [
-                    {
-                        "name": "campaign",
-                        "type": "publicKey"
-                    },
-                    {
-                        "name": "backer",
-                        "type": "publicKey"
-                    },
-                    {
-                        "name": "tierIndex",
-                        "type": "u8"
-                    },
-                    {
-                        "name": "amountPaid",
-                        "type": "u64"
-                    }
-                ]
-            }
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "limit",
+          "type": "u32"
         }
-    ],
-    "types": [
+      ]
+    },
+    {
+      "name": "cancel_campaign",
+      "discriminator": [
+        66,
+        10,
+        32,
+        138,
+        122,
+        36,
+        134,
+        202
+      ],
+      "accounts": [
         {
-            "name": "RewardTier",
-            "type": {
-                "kind": "struct",
-                "fields": [
-                    {
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "name": "description",
-                        "type": "string"
-                    },
-                    {
-                        "name": "amount",
-                        "type": "u64"
-                    },
-                    {
-                        "name": "limit",
-                        "type": "u32"
-                    },
-                    {
-                        "name": "claimed",
-                        "type": "u32"
-                    }
+          "name": "campaign",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "campaign"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "donate",
+      "discriminator": [
+        121,
+        186,
+        218,
+        211,
+        73,
+        70,
+        196,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true
+        },
+        {
+          "name": "backer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "nullifier_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  117,
+                  108,
+                  108,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114
                 ]
-            }
+              },
+              {
+                "kind": "arg",
+                "path": "nullifier_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "sanctioned_check",
+          "docs": [
+            "If it has data, user is sanctioned.",
+            "We derive it from [b\"sanctioned\", backer.key()]."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  110,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110,
+                  101,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "backer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "backer_receipt",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  99,
+                  107,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "backer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
-    ],
-    "errors": [
+      ],
+      "args": [
         {
-            "code": 6000,
-            "name": "InvalidTarget",
-            "msg": "Target amount must be positive"
+          "name": "amount",
+          "type": "u64"
         },
         {
-            "code": 6001,
-            "name": "InvalidDeadline",
-            "msg": "Deadline must be in the future"
+          "name": "proof",
+          "type": "bytes"
         },
         {
-            "code": 6002,
-            "name": "SanctionedAddress",
-            "msg": "Address is sanctioned by Range Protocol"
+          "name": "nullifier_hash",
+          "type": "bytes"
         },
         {
-            "code": 6003,
-            "name": "TargetNotMet",
-            "msg": "Campaign target not met"
-        },
-        {
-            "code": 6004,
-            "name": "CampaignActive",
-            "msg": "Campaign is still active"
-        },
-        {
-            "code": 6005,
-            "name": "TargetMet",
-            "msg": "Target already met"
-        },
-        {
-            "code": 6006,
-            "name": "NameTooLong",
-            "msg": "Name too long"
-        },
-        {
-            "code": 6007,
-            "name": "DescriptionTooLong",
-            "msg": "Description too long"
-        },
-        {
-            "code": 6008,
-            "name": "InvalidTreasury",
-            "msg": "Invalid Treasury Address"
-        },
-        {
-            "code": 6009,
-            "name": "TooManyTiers",
-            "msg": "Too many tiers"
-        },
-        {
-            "code": 6010,
-            "name": "InvalidTierIndex",
-            "msg": "Invalid tier index"
-        },
-        {
-            "code": 6011,
-            "name": "InsufficientAmountForTier",
-            "msg": "Insufficient amount for tier"
-        },
-        {
-            "code": 6012,
-            "name": "TierSoldOut",
-            "msg": "Tier sold out"
-        },
-        {
-            "code": 6013,
-            "name": "AccountNotInitialized",
-            "msg": "Account not initialized"
-        },
-        {
-            "code": 6014,
-            "name": "NoFundsToRefund",
-            "msg": "No funds to refund"
+          "name": "tier_index",
+          "type": {
+            "option": "u8"
+          }
         }
-    ],
-    "metadata": {
-        "address": "3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW"
+      ]
+    },
+    {
+      "name": "initialize_campaign",
+      "discriminator": [
+        169,
+        88,
+        7,
+        6,
+        9,
+        165,
+        65,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "campaign_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "campaign_id",
+          "type": "u64"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "target_amount",
+          "type": "u64"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "treasury",
+          "type": "pubkey"
+        },
+        {
+          "name": "fee_basis_points",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "refund",
+      "discriminator": [
+        2,
+        96,
+        183,
+        251,
+        63,
+        208,
+        46,
+        46
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true,
+          "relations": [
+            "backer_receipt"
+          ]
+        },
+        {
+          "name": "backer",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "backer_receipt"
+          ]
+        },
+        {
+          "name": "backer_receipt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  99,
+                  107,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "backer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "sanction_address",
+      "discriminator": [
+        234,
+        52,
+        192,
+        228,
+        173,
+        155,
+        50,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "sanctioned_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  110,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110,
+                  101,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "address_to_sanction"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "address_to_sanction",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "unsanction_address",
+      "discriminator": [
+        206,
+        252,
+        106,
+        244,
+        167,
+        12,
+        157,
+        147
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "sanctioned_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  110,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110,
+                  101,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sanctioned_account.address",
+                "account": "Sanctioned"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw",
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "campaign"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     }
+  ],
+  "accounts": [
+    {
+      "name": "Backer",
+      "discriminator": [
+        199,
+        128,
+        179,
+        190,
+        2,
+        66,
+        118,
+        252
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "backer",
+            "type": "pubkey"
+          },
+          {
+            "name": "tier_index",
+            "type": "u8"
+          },
+          {
+            "name": "amount_paid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Campaign",
+      "discriminator": [
+        50,
+        40,
+        49,
+        11,
+        157,
+        220,
+        229,
+        192
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "target_amount",
+            "type": "u64"
+          },
+          {
+            "name": "current_amount",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "tiers",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "RewardTier"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Nullifier",
+      "discriminator": [
+        18,
+        56,
+        142,
+        165,
+        181,
+        158,
+        187,
+        133
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hash",
+            "type": "bytes"
+          },
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlatformConfig",
+      "discriminator": [
+        160,
+        78,
+        128,
+        0,
+        248,
+        83,
+        230,
+        160
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Sanctioned",
+      "discriminator": [
+        159,
+        237,
+        139,
+        94,
+        146,
+        157,
+        38,
+        254
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidTarget",
+      "msg": "Target amount must be positive"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidDeadline",
+      "msg": "Deadline must be in the future"
+    },
+    {
+      "code": 6002,
+      "name": "SanctionedAddress",
+      "msg": "Address is sanctioned by Platform Admin"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidProof",
+      "msg": "Invalid Zero-Knowledge Proof"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidNullifier",
+      "msg": "Invalid Nullifier Hash"
+    },
+    {
+      "code": 6005,
+      "name": "TargetNotMet",
+      "msg": "Campaign target not met"
+    },
+    {
+      "code": 6006,
+      "name": "CampaignActive",
+      "msg": "Campaign is still active"
+    },
+    {
+      "code": 6007,
+      "name": "TargetMet",
+      "msg": "Target already met"
+    },
+    {
+      "code": 6008,
+      "name": "NameTooLong",
+      "msg": "Name too long"
+    },
+    {
+      "code": 6009,
+      "name": "DescriptionTooLong",
+      "msg": "Description too long"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidTreasury",
+      "msg": "Invalid Treasury Address"
+    },
+    {
+      "code": 6011,
+      "name": "TooManyTiers",
+      "msg": "Too many tiers"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidTierIndex",
+      "msg": "Invalid tier index"
+    },
+    {
+      "code": 6013,
+      "name": "InsufficientAmountForTier",
+      "msg": "Insufficient amount for tier"
+    },
+    {
+      "code": 6014,
+      "name": "TierSoldOut",
+      "msg": "Tier sold out"
+    },
+    {
+      "code": 6015,
+      "name": "AccountNotInitialized",
+      "msg": "Account not initialized"
+    },
+    {
+      "code": 6016,
+      "name": "NoFundsToRefund",
+      "msg": "No funds to refund"
+    },
+    {
+      "code": 6017,
+      "name": "CampaignNotEmpty",
+      "msg": "Campaign must be empty to close"
+    }
+  ],
+  "types": [
+    {
+      "name": "RewardTier",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "limit",
+            "type": "u32"
+          },
+          {
+            "name": "claimed",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Backer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "backer",
+            "type": "pubkey"
+          },
+          {
+            "name": "tier_index",
+            "type": "u8"
+          },
+          {
+            "name": "amount_paid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Campaign",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "target_amount",
+            "type": "u64"
+          },
+          {
+            "name": "current_amount",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "tiers",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "RewardTier"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Nullifier",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hash",
+            "type": "bytes"
+          },
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlatformConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Sanctioned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 [package]
 name = "shadow_fund_proof"
-type = "lib"
+type = "bin"
 authors = ["ShadowFund Team"]
 compiler_version = ">=0.22.0"
 

@@ -9,7 +9,7 @@ crate-type = ["cdylib", "lib"]
 name = "shadow_fund"
 
 [features]
-default = ["idl-build"]
+default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
@@ -20,7 +20,7 @@ custom-heap = []
 custom-panic = []
 
 [dependencies]
-anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
+anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }
 blake3 = "=1.5.1"
 borsh = "=1.5.1"
 borsh-derive = "=1.5.1"

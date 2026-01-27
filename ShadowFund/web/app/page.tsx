@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useState, useEffect } from "react";
-import { Program, AnchorProvider, BN } from "@project-serum/anchor";
+import { Program, AnchorProvider, BN } from "@coral-xyz/anchor";
 import idl from "../idl/shadow_fund.json";
 
 const PROGRAM_Id = new PublicKey("3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW");
@@ -38,7 +38,7 @@ export default function Home() {
         }, {});
 
         // @ts-ignore
-        const program = new Program(idl, PROGRAM_Id, provider);
+        const program = new Program(idl as any, provider);
         const accounts = await program.account.campaign.all();
 
         setCampaigns(accounts as any as CampaignAccount[]);
@@ -104,9 +104,20 @@ export default function Home() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--color-teal-500)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
                 <div className="flex justify-between items-start mb-6">
-                  <div className="bg-[var(--color-teal-900)] text-[var(--color-teal-400)] text-[10px] uppercase font-bold px-3 py-1 rounded-full tracking-wider">
-                    Active
-                  </div>
+                  {(() => {
+                    const now = new Date().getTime();
+                    const deadlineDate = new Date(camp.account.deadline.toNumber() * 1000).getTime();
+                    const isExpired = deadlineDate <= now;
+                    const isFunded = camp.account.currentAmount.toNumber() >= camp.account.targetAmount.toNumber();
+
+                    if (isFunded) {
+                      return <div className="bg-green-900/50 text-green-400 text-[10px] uppercase font-bold px-3 py-1 rounded-full tracking-wider border border-green-500/20">Funded</div>;
+                    } else if (isExpired) {
+                      return <div className="bg-red-900/50 text-red-400 text-[10px] uppercase font-bold px-3 py-1 rounded-full tracking-wider border border-red-500/20">Ended</div>;
+                    } else {
+                      return <div className="bg-[var(--color-teal-900)] text-[var(--color-teal-400)] text-[10px] uppercase font-bold px-3 py-1 rounded-full tracking-wider">Active</div>;
+                    }
+                  })()}
                   <div className="text-xs text-[var(--color-text-tertiary)] font-mono bg-[var(--color-charcoal-900)]/50 px-2 py-1 rounded">
                     {(() => {
                       const now = new Date().getTime();

@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { Program, AnchorProvider, web3, BN } from '@project-serum/anchor';
-import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Program, AnchorProvider, web3, BN, setProvider } from '@coral-xyz/anchor';
+
 import idl from '../../idl/shadow_fund.json';
+import { sha256 } from 'js-sha256';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { toast } from 'react-hot-toast';
 
+const { PublicKey, LAMPORTS_PER_SOL } = web3;
 const PROGRAM_Id = new PublicKey("3UnENRqs8b2EVZAkUaWLmKwyTL7ecpuGhCLrsT4cjsdW");
 
 interface Tier {
@@ -52,10 +54,130 @@ export default function CreateCampaign() {
     const toastId = toast.loading('Creating campaign...');
 
     try {
+      console.log("IDL Metadata:", (idl as any).metadata);
       // @ts-ignore
-      const provider = new AnchorProvider(connection, wallet, {});
+      const safeWallet = {
+        publicKey: new web3.PublicKey(wallet.publicKey.toBase58()),
+        signTransaction: wallet.signTransaction ? wallet.signTransaction.bind(wallet) : undefined,
+        signAllTransactions: wallet.signAllTransactions ? wallet.signAllTransactions.bind(wallet) : undefined,
+      };
+
       // @ts-ignore
-      const program = new Program(idl, PROGRAM_Id, provider);
+      const provider = new AnchorProvider(connection, safeWallet, {
+        commitment: 'confirmed',
+        preflightCommitment: 'confirmed',
+      });
+      setProvider(provider);
+
+      // -------------------------------------------------------------------------
+      // IDL SANITIZER: Robust fix for IDL Format (defined: string -> object) 
+      // AND Casing Mismatches (PascalCase vs camelCase)
+      // -------------------------------------------------------------------------
+
+      const idlObject = JSON.parse(JSON.stringify(idl));
+
+      // 1. Ensure Address
+      if (!idlObject.address && idlObject.metadata?.address) {
+        idlObject.address = idlObject.metadata.address;
+      }
+
+      // 2. Ensure Types Array
+      if (!idlObject.types) {
+        idlObject.types = [];
+      }
+
+      // 3. Sync Accounts -> Types + Casing Polyfills
+      if (idlObject.accounts) {
+        const newAccounts = [...idlObject.accounts];
+
+        // Discord helper
+        const getDiscriminator = (name: string) => {
+          const preimage = `account:${name}`;
+          return sha256.digest(preimage).slice(0, 8);
+        };
+
+        idlObject.accounts.forEach((acc: any) => {
+          // FIX: Calculate Discriminator if missing (Crucial for BorshAccountsCoder)
+          if (!acc.discriminator) {
+            acc.discriminator = getDiscriminator(acc.name);
+          }
+
+          // Ensure PascalCase type exists
+          if (!idlObject.types.find((t: any) => t.name === acc.name) && acc.type) {
+            idlObject.types.push({ name: acc.name, type: acc.type });
+          }
+          // Polyfill camelCase account
+          const camelName = acc.name.charAt(0).toLowerCase() + acc.name.slice(1);
+          if (camelName !== acc.name) {
+            newAccounts.push({ ...acc, name: camelName });
+            // Polyfill camelCase type
+            if (!idlObject.types.find((t: any) => t.name === camelName) && acc.type) {
+              idlObject.types.push({ name: camelName, type: acc.type });
+            }
+          }
+        });
+        idlObject.accounts = newAccounts;
+      }
+
+      // 4. Sycn Types -> camelCase Types
+      const newTypes = [...idlObject.types];
+      idlObject.types.forEach((t: any) => {
+        const camelName = t.name.charAt(0).toLowerCase() + t.name.slice(1);
+        if (camelName !== t.name && !newTypes.find((nt: any) => nt.name === camelName)) {
+          newTypes.push({ ...t, name: camelName });
+        }
+      });
+      idlObject.types = newTypes;
+
+      // 5. RECURSIVE FIXER: Convert "defined": "Name" -> "defined": { "name": "Name" }
+      const fixType = (ty: any) => {
+        if (!ty || typeof ty !== 'object') return;
+
+        // Fix 'defined' string to object
+        if (ty.defined && typeof ty.defined === 'string') {
+          ty.defined = { name: ty.defined };
+        }
+
+        // Recurse
+        if (ty.vec) fixType(ty.vec);
+        if (ty.option) fixType(ty.option);
+        if (ty.array && ty.array[0]) fixType(ty.array[0]);
+        if (ty.kind === 'struct' && ty.fields) {
+          ty.fields.forEach((f: any) => fixType(f.type));
+        }
+        // Arguments/Fields wrapper often has 'type' property
+        if (ty.type) fixType(ty.type);
+      };
+
+      // Apply recursive fix to all sources of types
+      if (idlObject.accounts) idlObject.accounts.forEach((acc: any) => fixType(acc.type));
+      if (idlObject.types) idlObject.types.forEach((t: any) => fixType(t.type));
+      // Apply recursive fix to all sources of types
+      if (idlObject.accounts) idlObject.accounts.forEach((acc: any) => fixType(acc.type));
+      if (idlObject.types) idlObject.types.forEach((t: any) => fixType(t.type));
+      if (idlObject.instructions) {
+        idlObject.instructions.forEach((ix: any) => {
+          // FIX: Calculate Instruction Discriminator if missing
+          if (!ix.discriminator) {
+            // Anchor uses snake_case for the preimage "global:snake_case_name"
+            const snakeName = ix.name.replace(/[A-Z]/g, (letter: string) => `_${letter.toLowerCase()}`);
+            const preimage = `global:${snakeName}`;
+            ix.discriminator = sha256.digest(preimage).slice(0, 8);
+
+            // Debug discriminator derivation
+            console.log(`DEBUG: Discriminator for ${ix.name} (${snakeName}) -> ${preimage} -> ${ix.discriminator.join(',')}`);
+          }
+
+          ix.args.forEach((arg: any) => fixType(arg.type));
+          if (ix.accounts) ix.accounts.forEach((acc: any) => { /* accounts usually flat */ });
+        });
+      }
+
+      console.log("DEBUG: IDL Sanitized Successfully");
+      // -------------------------------------------------------------------------
+
+      // @ts-ignore
+      const program = new Program(idlObject, provider);
 
       const campaignId = new BN(Date.now());
 
@@ -70,12 +192,13 @@ export default function CreateCampaign() {
         throw new Error("Please fill in all fields");
       }
 
-      const targetBN = new BN(parseFloat(target) * LAMPORTS_PER_SOL);
-      const deadlineBN = new BN(new Date(deadline).getTime() / 1000);
+      const targetBN = new BN(Math.floor(parseFloat(target) * LAMPORTS_PER_SOL));
+      const deadlineBN = new BN(Math.floor(new Date(deadline).getTime() / 1000));
 
       const addTierIxs = await Promise.all(tiers.map(async (tier) => {
         const amountBN = new BN(parseFloat(tier.amount) * LAMPORTS_PER_SOL);
         const limitVal = tier.limit ? parseInt(tier.limit) : 0;
+
         return await program.methods.addRewardTier(
           tier.name,
           tier.description || "",
@@ -84,7 +207,7 @@ export default function CreateCampaign() {
         )
           .accounts({
             campaign: campaignPda,
-            owner: wallet.publicKey as PublicKey,
+            owner: wallet.publicKey as web3.PublicKey,
           })
           .instruction();
       }));
@@ -98,15 +221,44 @@ export default function CreateCampaign() {
       )
         .accounts({
           campaign: campaignPda,
-          owner: wallet.publicKey as PublicKey,
+          owner: wallet.publicKey as web3.PublicKey,
           systemProgram: web3.SystemProgram.programId,
         })
         .postInstructions(addTierIxs)
-        .rpc();
+        .transaction();
 
-      console.log("Transaction:", tx);
-      setTxHash(tx);
+      // INCREASE COMPUTE BUDGET
+      const modifyComputeUnits = web3.ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 });
+      // Prepend to instructions
+      tx.instructions = [modifyComputeUnits, ...tx.instructions];
+
+      // Prepare transaction for simulation and sending
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = new web3.PublicKey(wallet.publicKey.toBase58());
+
+      // SIMULATE TRANSACTION - SKIPPED
+      // The wallet.sendTransaction will handle simulation internally with the real signature.
+      // Manual simulation fails with PrivilegeEscalation because we can't provide a signature here.
+      // console.log("Simulating transaction...");
+      // const simulation = await connection.simulateTransaction(tx);
+      // console.log("Simulation Result:", simulation);
+      // if (simulation.value.err) {
+      //   console.error("Simulation Logs:", simulation.value.logs);
+      //   throw new Error("Simulation failed: " + JSON.stringify(simulation.value.err));
+      // }
+
+      const signedTx = await wallet.sendTransaction(tx, connection);
+      console.log("Transaction sent:", signedTx);
+
+      setTxHash(signedTx);
       setCreatedCampaignAddress(campaignPda.toString());
+
+      await connection.confirmTransaction({
+        signature: signedTx,
+        blockhash,
+        lastValidBlockHeight
+      }, 'confirmed');
 
       toast.success('Campaign launched successfully!', { id: toastId });
     } catch (err: any) {

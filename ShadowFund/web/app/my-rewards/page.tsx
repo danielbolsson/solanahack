@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { Program, AnchorProvider, web3, BN } from '@project-serum/anchor';
+import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import idl from '../../idl/shadow_fund.json';
 import { toast } from 'react-hot-toast';
@@ -37,7 +37,7 @@ export default function MyRewards() {
             // @ts-ignore
             const provider = new AnchorProvider(connection, wallet, {});
             // @ts-ignore
-            const program = new Program(idl, PROGRAM_Id, provider);
+            const program = new Program(idl as any, provider);
 
             // Fetch Backer accounts where backer == wallet.publicKey
             // Discriminator (8) + Campaign (32) = Offset 40 for Backer

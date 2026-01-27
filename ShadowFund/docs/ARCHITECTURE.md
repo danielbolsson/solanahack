@@ -99,16 +99,50 @@ ShadowFund decouples the **Payment** from the **attribution** using a Shielded P
 -   **Observer View**: An observer sees money entering the pool from many users, and money leaving the pool to many campaigns. They cannot link a specific input (User A) to a specific output (Campaign B).
 -   **Backer Receipt**: The `Backer` PDA allows the user to *voluntarily* reveal their support to the campaign creator (e.g., to claim a reward) without exposing the payment trail to the entire world.
 
-### Current Implementation Note
-*As this is a prototype, the ZK verification is mocked. The `donate` instruction accepts a `tier_index` and mints the `Backer` receipt, simulating the post-privacy state where a user has successfully funded a campaign anonymously.*
+---
 
-### Privacy Analysis: The "Claiming Leak"
+## 4. Implementation Status
+
+### Current State: Mocked Privacy
+
+> [!CAUTION]
+> The current implementation is a **prototype with simulated privacy**. Real zero-knowledge proofs are NOT yet integrated.
+
+| Component | Current Implementation | Real Privacy? |
+|-----------|----------------------|---------------|
+| **Deposit** | Direct: `User Wallet → Campaign` | ❌ No - Wallet visible on-chain |
+| **Proof** | Wallet signature of nullifier | ❌ No - Not a ZK proof |
+| **Nullifier** | Random bytes | ❌ No - No real double-spend protection |
+| **Anonymity Set** | None (1:1 mapping) | ❌ No |
+| **Backer Receipt** | Optional PDA (stealth mode skips it) | ⚠️ Partial |
+
+**What "Stealth Mode" currently does:**
+- Skips creating the `Backer` PDA, so the campaign owner cannot enumerate backers via PDAs.
+- Does NOT hide the transaction: An on-chain observer can still see `User Wallet → Campaign PDA`.
+
+### Target State: True ShadowWire
+
+| Component | Target Implementation | Real Privacy? |
+|-----------|----------------------|---------------|
+| **Deposit** | `User Wallet → ShadowPool` | ✅ Yes - Joins anonymity set |
+| **ZK Proof** | Noir circuit proving valid deposit | ✅ Yes - Cryptographic guarantee |
+| **Nullifier** | `Hash(secret)` | ✅ Yes - Prevents double-spend |
+| **Withdraw** | `ShadowPool → Campaign` | ✅ Yes - Unlinked from depositor |
+| **Backer Receipt** | Minted to fresh wallet | ✅ Yes - Selective disclosure |
+
+---
+
+## 5. Privacy Analysis: The "Claiming Leak"
+
 You may notice that the `Backer` PDA includes the `backer` public key (`b"backer", campaign_id, backer_pubkey`). 
+
 **Does this leak privacy?** 
-*   **In Prototype**: Yes, because the donation wallet and the claiming wallet are the same.
-*   **In Production ZK System**: No. The power of ZK is that you can prove you funded the pool *without* revealing which wallet did it. 
+
+-   **In Current Prototype**: Yes, because the donation wallet and the claiming wallet are the same.
+-   **In Full ShadowWire System**: No. The power of ZK is that you can prove you funded the pool *without* revealing which wallet did it:
     1.  User Funds Pool (Wallet A).
-    2.  User Generates Proof.
+    2.  User Generates ZK Proof locally.
     3.  User Claims Reward (Wallet B - A fresh, anonymous wallet). 
     
-    The `Backer` receipt is minted to Wallet B. The public sees `Wallet B supported Campaign X`, but cannot link it back to Wallet A (the source of funds). This allows "Selective Disclosure" of support.
+    The `Backer` receipt is minted to Wallet B. The public sees `Wallet B supported Campaign X`, but cannot link it back to Wallet A (the source of funds). This enables **Selective Disclosure** of support.
+

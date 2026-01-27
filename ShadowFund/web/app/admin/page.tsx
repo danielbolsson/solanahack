@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { Program, AnchorProvider, web3, BN } from '@project-serum/anchor';
+import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import idl from '../../idl/shadow_fund.json';
 import { toast } from 'react-hot-toast';
@@ -14,6 +14,7 @@ export default function AdminPage() {
     const wallet = useWallet();
     const [treasury, setTreasury] = useState('');
     const [fee, setFee] = useState('500'); // 5%
+    const [sanctionAddress, setSanctionAddress] = useState('');
 
     const initializeConfig = async () => {
         if (!wallet.publicKey) {
@@ -34,7 +35,7 @@ export default function AdminPage() {
                 preflightCommitment: 'confirmed',
             });
             // @ts-ignore
-            const program = new Program(idl, PROGRAM_Id, provider);
+            const program = new Program(idl as any, PROGRAM_Id, provider);
 
             const [configPda] = PublicKey.findProgramAddressSync(
                 [Buffer.from("config")],
@@ -78,6 +79,53 @@ export default function AdminPage() {
         }
     };
 
+    const handleSanction = async (isSanction: boolean) => {
+        if (!wallet.publicKey) return toast.error("Connect Wallet");
+        if (!sanctionAddress) return toast.error("Enter Address");
+
+        const toastId = toast.loading(isSanction ? "Sanctioning..." : "Unsanctioning...");
+
+        try {
+            // @ts-ignore
+            const provider = new AnchorProvider(connection, wallet, { commitment: 'confirmed' });
+            // @ts-ignore
+            const program = new Program(idl as any, PROGRAM_Id, provider);
+
+            const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("config")], PROGRAM_Id);
+            const [sanctionedPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from("sanctioned"), new PublicKey(sanctionAddress).toBuffer()],
+                PROGRAM_Id
+            );
+
+            let tx;
+            if (isSanction) {
+                tx = await program.methods.sanctionAddress(new PublicKey(sanctionAddress))
+                    .accounts({
+                        config: configPda,
+                        sanctionedAccount: sanctionedPda,
+                        admin: wallet.publicKey,
+                        systemProgram: web3.SystemProgram.programId,
+                    })
+                    .rpc();
+            } else {
+                tx = await program.methods.unsanctionAddress()
+                    .accounts({
+                        config: configPda,
+                        sanctionedAccount: sanctionedPda,
+                        admin: wallet.publicKey,
+                    })
+                    .rpc();
+            }
+
+            console.log("Tx:", tx);
+            toast.success(isSanction ? "Address Sanctioned!" : "Address Unsanctioned!", { id: toastId });
+            setSanctionAddress('');
+        } catch (e: any) {
+            console.error(e);
+            toast.error("Failed: " + e.message, { id: toastId });
+        }
+    };
+
     return (
         <div className="min-h-screen pt-24 px-4">
             <div className="max-w-md mx-auto glass-panel p-8 rounded-2xl">
@@ -115,6 +163,34 @@ export default function AdminPage() {
                     <p className="text-xs text-center text-[var(--color-text-tertiary)]">
                         Only needs to be run once per deployment.
                     </p>
+                </div>
+
+                <div className="mt-8 pt-8 border-t border-[var(--color-charcoal-700)] space-y-4">
+                    <h2 className="text-xl font-bold text-white">Compliance (Range Protocol)</h2>
+                    <div>
+                        <label className="text-xs font-bold text-[var(--color-text-secondary)] uppercase block mb-1">Target Address</label>
+                        <input
+                            type="text"
+                            className="w-full p-2 rounded bg-[var(--color-charcoal-800)] text-white border border-[var(--color-charcoal-700)]"
+                            value={sanctionAddress}
+                            onChange={(e) => setSanctionAddress(e.target.value)}
+                            placeholder="Wallet to Sanction"
+                        />
+                    </div>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => handleSanction(true)}
+                            className="flex-1 py-3 bg-red-500/20 text-red-500 border border-red-500/50 font-bold rounded-lg hover:bg-red-500/30"
+                        >
+                            Sanction
+                        </button>
+                        <button
+                            onClick={() => handleSanction(false)}
+                            className="flex-1 py-3 bg-green-500/20 text-green-500 border border-green-500/50 font-bold rounded-lg hover:bg-green-500/30"
+                        >
+                            Unsanction
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
