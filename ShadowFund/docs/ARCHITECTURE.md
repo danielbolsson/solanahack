@@ -11,7 +11,7 @@ graph TD
     User[User / Wallet]
     Frontend[Next.js Frontend]
     Contract[Anchor Smart Contract]
-    ZK[Noir Circuits (Privacy Layer)]
+    ZK[Noir Circuits Privacy Layer]
     Solana[Solana Blockchain]
 
     User -->|Interacts| Frontend
