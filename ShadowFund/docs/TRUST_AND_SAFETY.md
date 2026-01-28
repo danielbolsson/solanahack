@@ -48,9 +48,18 @@ A trusted third party manually verifies the project.
 *   **Pros**: Simple for users ("Blue checkmark").
 *   **Cons**: Centralized; requires ShadowFund to act as arbiter.
 
-## Recommended Implementation for ShadowFund
+## 5. Implemented Safety Features
 
-For the MVP, we recommend **Option 1 (Social Proof)** + **Option 4 (Admin Verification)**.
+### Sanctions Screening (OFAC Compliance)
+To prevent illicit usage while maintaining privacy, we integrated a sanctions check directly into the smart contract.
 
-1.  **Add `website` and `socials` fields** to `Campaign` struct (Transparency).
-2.  **Add `verified_by_admin` flag** (Safety).
+*   **Mechanism**: The contract derives a PDA `[b"sanctioned", user_key]`.
+*   **Check**: In the `donate` instruction, the contract verifies this account is **NOT** initialized or has no data.
+*   **Enforcement**: If a user is on the blocklist (marked by the Admin), the transaction reverts with `ErrorCode::SanctionedAddress`.
+
+### Integrity via Nullifiers
+Even in a private system, we must ensure fairness (no double-spending).
+
+*   **Mechanism**: Every ZK proof generates a unique deterministic **Nullifier** (`Hash(secret + campaign_id)`).
+*   **Check**: The contract stores this Nullifier on-chain (`Nullifier` PDA).
+*   **Enforcement**: If the same Nullifier is seen again, the contract rejects the transaction (`ErrorCode::AccountAlreadyInitialized`), preventing a user from secretly donating the same funds twice.
